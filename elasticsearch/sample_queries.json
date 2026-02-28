@@ -1,0 +1,89 @@
+#Query for basic searching on some fields
+GET /ab_nyc_2019/_search
+{
+    "query":{
+        "match":{
+        "neighbourhood": "Murray Huill"
+        }
+    }
+}
+
+# Query to filter between a range 
+GET /ab_nyc_2019/_search
+{
+    "query": {
+        "range": {
+          "availability_365": {
+            "gte": 50,
+            "lte": 60
+          }
+        }
+    }
+}
+
+# Query for aggregation based outputs
+GET /ab_nyc_2019/_search
+{   
+    "size": 0,
+    "aggs": {
+      "avg_price": {
+        "avg": {
+            "field": "price"
+        }
+      }
+    }
+}
+
+
+GET /ab_nyc_2019/_search
+{
+  "size": 1,
+  "aggs": {
+    "order_by_neighbourhood": {
+      "terms": {
+        "field": "neighbourhood.keyword"
+      }
+    }
+  }
+}
+
+# Query to convert the latitude and longitude to Geopoint
+# Create mapping
+PUT ab_nyc_2019/_mapping
+{
+        "properties": {
+            "location":{
+                "type": "geo_point"
+            }
+        }
+}
+
+# add values(Geopoint)
+POST ab_nyc_2019/_update_by_query
+{
+  "script": {
+    "source": """
+      if (ctx._source.latitude != null && ctx._source.longitude != null) {
+        
+        def lat = ctx._source.latitude;
+        def lon = ctx._source.longitude;
+
+        if (lat instanceof String) {
+          if (lat.length() == 0) return;
+          lat = Double.parseDouble(lat);
+        }
+
+        if (lon instanceof String) {
+          if (lon.length() == 0) return;
+          lon = Double.parseDouble(lon);
+        }
+
+        ctx._source.location = [
+          'lat': lat,
+          'lon': lon
+        ];
+      }
+    """,
+    "lang": "painless"
+  }
+}
